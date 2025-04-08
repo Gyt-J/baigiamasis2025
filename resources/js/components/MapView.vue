@@ -22,7 +22,6 @@
         try 
         {
             const response = await fetch("http://127.0.0.1:8000/api/polygons");
-            const data = await response.json();
 
             polygons.value = data;
             
@@ -45,6 +44,7 @@
         }).addTo(map.value);
     };
 
+    // Uzkrauna leaflet-draw 
     const loadDraw = () => {
         //console.log("Kraunamas draw pluginas");
 
@@ -53,7 +53,7 @@
         drawnArea.value = new L.FeatureGroup(); // Layer group poligonu laikimui
         map.value.addLayer(drawnArea.value);
 
-        // 'Draw' kontroles
+        // 'Draw' kontrole
         const drawControl = new L.Control.Draw({
             edit:
             {
@@ -77,8 +77,8 @@
 
         // Kai sukuriamas poligonas
         map.value.on(L.Draw.Event.CREATED, (e) => {
-            const layer = e.layer;
-            drawnArea.value.addLayer(layer);
+            const layer = e.layer; // Paima sukurta figura
+            drawnArea.value.addLayer(layer); // Ideda i 'feature group'
 
             drawnCoords.value = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
             alert("Poligonas sukurtas. Saugojimas: ");
@@ -91,8 +91,8 @@
 
         polygons.value.forEach((polygon) => {
             L.polygon(polygon.coordinates, {
-                color: polygon.color || "#ff0000", // Naudos kaip default
-                fillColor: polygon.color || "#ff0000",
+                color: polygon.color || "#0000ff", // Naudos kaip default jei nera spalvos
+                fillColor: polygon.color || "#0000ff",
                 fillOpacity: 0.5,
             }).addTo(map.value);
         });
@@ -105,6 +105,7 @@
         loadDraw();
     });
 
+    // Saugo nupiestus poligonus i DB
     const saveDrawnPolygon = async () => {
         if (!drawnCoords.value.length) return alert("Nera poligono");
 
@@ -136,6 +137,7 @@
         }
     };
 
+    // Saugo tekstu ivestus poligonus
     const sTypedPolygon = async () => {
         try
         {

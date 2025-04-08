@@ -21,4 +21,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/polygons', [PolygonController::class, 'store']);
-Route::get('/polygons', [PolygonController::class, 'index']); // Mano pridete, up2 irgi
+Route::get('/polygons', [PolygonController::class, 'index']); // Mano pridete, up1 irgi
