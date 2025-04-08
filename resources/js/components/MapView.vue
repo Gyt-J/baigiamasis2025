@@ -23,6 +23,7 @@
         {
             const response = await fetch("http://127.0.0.1:8000/api/polygons");
 
+            const data = await response.json();
             polygons.value = data;
             
             drawPolygons();
@@ -33,7 +34,6 @@
             console.error("Problema fetching polygons: ", error);
         }
     };
-
 
     // Uzkrauna pati zemelapi
     const loadMap = () => {
