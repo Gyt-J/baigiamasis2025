@@ -5,6 +5,7 @@
     import "leaflet/dist/leaflet.css";
     import 'leaflet-draw';
     import 'leaflet-draw/dist/leaflet.draw.css';
+import { values } from "lodash";
 
     // Ref zemelapiui ir poligonams
     const map = ref(null);
@@ -16,6 +17,14 @@
         coordinates: '',
         color: '',
     });
+    const selectedPolygon = ref(null); // Pasirinktas poligonas
+    const editForm = ref({
+        id: null,
+        name: '',
+        color: '',
+        coordinates: ''
+    });
+    const showEditPopup = ref(false); // Popup rodymas, default - nerodo
 
     // Paima polygonus is Laravel API
     const fetchPolygons = async () => {
@@ -58,8 +67,8 @@
             edit:
             {
                 featureGroup: drawnArea.value,
-                //edit: true,
-                //remove: true
+                remove: true,
+                selectedPathOptions: { maintainColor: true }
             },
 
             draw:
@@ -83,10 +92,33 @@
             drawnCoords.value = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
             alert("Poligonas sukurtas. Saugojimas: ");
         });
+
+        map.value.on(L.Draw.Event.EDITED, (e) => {
+            const layers = e.layers;
+
+            layers.eachLayer((layer) => {
+                const coords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+
+                const newColor = prompt("Iveskite nauja spalva (hex): ", "00ff00");
+
+                fetch(`http://127.0.0.1:8000/api/polygons/${layer.polygonId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", },
+                    body: JSON.stringify({
+                        coordinates: [coords],
+                        color: newColor,
+                        name: "Updated Polygon"
+                    })
+                })
+                .then(res => res.json())
+                .then(data => alert("Poligonas atnaujintas"))
+                .catch(err => console.error("Atnaujinimo klaida: ", err));
+            });
+        });
     };
 
     // Poligonu vizualizacijai
-    const drawPolygons = () => {
+    /*const drawPolygons = () => {
         if (!map.value) return;
 
         polygons.value.forEach((polygon) => {
@@ -95,6 +127,30 @@
                 fillColor: polygon.color || "#0000ff",
                 fillOpacity: 0.5,
             }).addTo(map.value);
+        });
+    };*/
+
+    const drawPolygons = () => {
+        if (!map.value) return;
+
+        drawnArea.value.clearLayers(); // ???
+
+        polygons.value.forEach((polygon) => {
+            const poly = L.polygon(polygon.coordinates, {
+                color: polygon.color || "#0000ff",
+                fillColor: polygon.color || "#0000ff",
+                fillOpacity: 0.5,
+            });
+
+            poly.polygonId = polygon.id;
+
+            //poly.on("Click", () => openEditPopup(polygon, poly));
+            poly.on("click", () => {
+                console.log("poligonas paspaustas");
+                openEditPopup(polygon, poly);
+            });
+
+            drawnArea.value.addLayer(poly);
         });
     };
 
@@ -174,26 +230,62 @@
         }
     };
 
-    /* map.value.on(L.Draw.Event.EDITED, (e) => {
-        const layers = e.layers;
+    // Poligono atnaujinimo popup atidarymui
+    const openEditPopup = (polygon, layer) => {
+        selectedPolygon.value = layer;
 
-        layers.eachLayer((layer) => {
-            const coords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+        editForm.value = {
+            id: polygon.id,
+            name: polygon.name,
+            color: polygon.color || '#0000ff',
+            coordinates: polygon.coordinates // Tik rodymui
+        };
 
-            fetch(`http://127.0.0.1:8000/api/polygons/${layer.polygonId}`, {
+        showEditPopup.value = true; // Turetu atidaryti popup
+    };
+
+    // Poligono atnaujinimo pateikimui
+    const submitEdit = async () => {
+        try
+        {
+            const coordinates = typeof editForm.value.coordinates === 'string'
+            ? JSON.parse(editForm.value.coordinates)
+            : editForm.value.coordinates;
+        
+            const res = await fetch(`http://127.0.0.1:8000/api/polygons/${editForm.value.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    coordinates: [coords],
-                    color: newColor,
-                    name: "Updated Polygon"
+                    name: editForm.value.name,
+                    color: editForm.value.color,
+                    coordinates: coordinates // Panaudoja parsed kordinates
                 })
-            })
-            .then(res => res.json())
-            .then(data => alert("Poligonas atnaujintas"))
-            .catch(err => console.error("Atnaujinimo klaida: ", err));
-        });
-    }); */
+            });
+
+            const data = await res.json();
+            alert("Atnaujinta");
+            showEditPopup.value = false; // Vel paslepia popup
+            fetchPolygons(); // Perkauna site'a
+        }
+
+        catch (err)
+        {
+            console.error("Klaida atnaujinime: ", err);
+        }
+
+    };
+
+    const tryParseJSON = (str) => {
+        try
+        {
+            return JSON.parse(str);
+        }
+
+        catch
+        {
+            return str; // Fallback jei parsing nepaeis
+        }
+    }
 
 </script>
 
@@ -205,10 +297,30 @@
     <hr />
 
     <h3> Irasykite poligona ranka </h3>
+    
     <input v-model="typedPolygon.name" placeholder="Pavadinimas" />
     <input type="color" v-model="typedPolygon.color" />
     <textarea v-model="typedPolygon.coordinates" placeholder="[[55.1234, 23.1234], [55.5678, 23.5678]]"></textarea>
     <button @click="sTypedPolygon"> Ikelti Poligona </button>
+
+    <div v-if="showEditPopup" class="popup">
+        <h3> Redaguoti poligona </h3>
+
+        <input v-model="editForm.name" placeholder="Pavadinimas" />
+        <input type="color" v-model="editForm.color" />
+        <!--<textarea v-model="editForm.coordinates" rows="5" cols="30" readonly></textarea>-->
+        <textarea
+            :value="JSON.stringify(editForm.coordinates, null, 2)"
+            @input="editForm.coordinates = tryParseJSON($event.target.value)"
+            rows="5"
+            cols="30"
+        ></textarea>
+        
+        <br />
+
+        <button @click="submitEdit"> Išsaugoti </button>
+        <button @click="showEditPopup = false"> Atšaukti </button>
+    </div>
 
 </template>
 
@@ -218,6 +330,19 @@
     {
         height: 100vh;
         width: 100%;
+    }
+
+    .popup
+    {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: #f1f1f1;
+        padding: 15px;
+        border: 2px solid #ccc;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        z-index: 10000;
+        width: 300px;
     }
 
 </style>
