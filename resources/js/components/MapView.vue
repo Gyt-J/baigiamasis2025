@@ -5,7 +5,7 @@
     import "leaflet/dist/leaflet.css";
     import 'leaflet-draw';
     import 'leaflet-draw/dist/leaflet.draw.css';
-import { values } from "lodash";
+import { method, values } from "lodash";
 
     // Ref zemelapiui ir poligonams
     const map = ref(null);
@@ -25,6 +25,12 @@ import { values } from "lodash";
         coordinates: ''
     });
     const showEditPopup = ref(false); // Popup rodymas, default - nerodo
+    const statusColors = {
+        'Užimtas': '#d06060', // Raudona
+        'Laisvas': '#85d060', // Zalia
+        'Dirbamas': '#f7f12f', // Geltona
+        'Rezervuotas': '#609bd0', // Melyna
+    }
 
     // Paima polygonus is Laravel API
     const fetchPolygons = async () => {
@@ -133,12 +139,21 @@ import { values } from "lodash";
     const drawPolygons = () => {
         if (!map.value) return;
 
-        drawnArea.value.clearLayers(); // ???
+        drawnArea.value.clearLayers();
 
         polygons.value.forEach((polygon) => {
+            console.log("Pilnas poligono objektas:", polygon);
+
+            const status =
+                typeof polygon.statusas === 'object'
+                ? polygon.statusas?.statusas
+                : polygon.statusas;
+            
+            const polyColor = polygon.color || statusColors[status] || '#cccccc';
+
             const poly = L.polygon(polygon.coordinates, {
-                color: polygon.color || "#0000ff",
-                fillColor: polygon.color || "#0000ff",
+                color: polyColor,
+                fillColor: polyColor,
                 fillOpacity: 0.5,
             });
 
@@ -152,6 +167,7 @@ import { values } from "lodash";
 
             drawnArea.value.addLayer(poly);
         });
+
     };
 
     // Paleidžia kai viskas uzloadinta
@@ -246,7 +262,7 @@ import { values } from "lodash";
 
     // Poligono atnaujinimo pateikimui
     const submitEdit = async () => {
-        try
+        /*try
         {
             const coordinates = typeof editForm.value.coordinates === 'string'
             ? JSON.parse(editForm.value.coordinates)
@@ -271,21 +287,62 @@ import { values } from "lodash";
         catch (err)
         {
             console.error("Klaida atnaujinime: ", err);
+        }*/
+
+        try
+        {
+            let coordinates = editForm.value.coordinates;
+
+            if (typeof coordinates === 'string')
+            {
+                const parsed = tryParseJSON(coordinates);
+
+                if (!Array.isArray(parsed))
+                {
+                    alert("Netinkamas koordinaciu formatas");
+                    return;
+                }
+
+                coordinates = parsed;
+            }
+
+            const res = await fetch(`http://127.0.0.1:8000/api/polygons/${editForm.value.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: editForm.value.name,
+                    color: editForm.value.color,
+                    coordinates: Array.isArray(editForm.value.coordinates)
+                        ? editForm.value.coordinates
+                        : tryParseJSON(editForm.value.coordinates)
+                })
+            });
+
+            const data = await res.json();
+            alert("Atnaujinta");
+            showEditPopup.value = false;
+
+            fetchPolygons();
+        }
+
+        catch (err)
+        {
+            console.error("Klaida atnaujinime: ", err);
         }
 
     };
 
     const tryParseJSON = (str) => {
-        try
+        try 
         {
             return JSON.parse(str);
         }
 
-        catch
+        catch 
         {
-            return str; // Fallback jei parsing nepaeis
+            return null; // safer than returning raw string
         }
-    }
+    };
 
 </script>
 

@@ -9,7 +9,12 @@ class Polygon extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'coordinates', 'color'];
+    protected $fillable = ['name', 'coordinates', 'color', 'rc_kodas', 'statusas_id'];
 
     protected $casts = ['coordinates' => 'array']; // Automatiskai decodina JSON
+
+    public function statusas()
+    {
+        return $this->belongsTo(Statusas::class, 'statusas_id');
+    }
 }
