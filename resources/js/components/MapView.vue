@@ -5,6 +5,8 @@
     import "leaflet/dist/leaflet.css";
     import 'leaflet-draw';
     import 'leaflet-draw/dist/leaflet.draw.css';
+    import * as turf from '@turf/turf';
+    import 'leaflet-geometryutil';
 import { method, values } from "lodash";
 
     // Ref zemelapiui ir poligonams
@@ -31,6 +33,12 @@ import { method, values } from "lodash";
         'Dirbamas': '#f7f12f', // Geltona
         'Rezervuotas': '#609bd0', // Melyna
     }
+    const statusMapping = {
+        'Užimtas' : 1,
+        'Laisvas' : 2,
+        'Dirbamas' : 3,
+        'Rezervuotas' : 4
+    };
 
     // Paima polygonus is Laravel API
     const fetchPolygons = async () => {
@@ -93,10 +101,31 @@ import { method, values } from "lodash";
         // Kai sukuriamas poligonas
         map.value.on(L.Draw.Event.CREATED, (e) => {
             const layer = e.layer; // Paima sukurta figura
-            drawnArea.value.addLayer(layer); // Ideda i 'feature group'
 
+            const latLngs = layer.getLatLngs();
+
+            if (!latLngs?.[0]?.length)
+            {
+                alert("Invalid polygon coordinates");
+                return;
+            }
+
+            drawnArea.value.addLayer(layer); // Ideda i 'feature group'
             drawnCoords.value = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+
+            const geojson = layer.toGeoJSON();
+            const areaSqMeters = turf.area(geojson);
+            const areaHectares = (areaSqMeters / 10000).toFixed(2);
+
+            layer.bindTooltip(`${areaHectares} ha`, {
+                permanent: true,
+                direction: 'center',
+                className: 'area-label'
+            }).openTooltip();
+
             alert("Poligonas sukurtas. Saugojimas: ");
+
+            typedPolygon.value.area = parseFloat(areaHectares);
         });
 
         map.value.on(L.Draw.Event.EDITED, (e) => {
@@ -179,15 +208,68 @@ import { method, values } from "lodash";
 
     // Saugo nupiestus poligonus i DB
     const saveDrawnPolygon = async () => {
-        if (!drawnCoords.value.length) return alert("Nera poligono");
 
-        const name = prompt("Iveskite poligono pavadinima: ");
+        if (!drawnCoords.value.length) return alert("Nėra poligono");
+
+        const name = prompt("Įveskite poligono pavadinimą:");
+        const colorOrStatus = prompt("Įveskite spalvą (hex) arba statusą (Užimtas, Laisvas, Dirbamas, Rezervuotas):");
+
+        // Skaiciuojamas plotas
+        const geojson = {
+            type: "Polygon",
+            coordinates: [drawnCoords.value]
+        };
+
+        const area = (turf.area(geojson) / 10000).toFixed(2); // Hektarai
+        const roundedArea = Math.round(area * 100) / 100;
+
+        const body = {
+            name,
+            coordinates: [drawnCoords.value],
+            plotas: roundedArea,
+        };
+
+        if (statusMapping[input])
+        {
+            body.statusas_id = statusMapping[input];
+        }
+
+        else if (/^#([0-9A-F]{3}){1,2}$/i.test(input)) 
+        {
+            body.color = input;
+        } 
+
+        try 
+        {
+            const res = await fetch("http://127.0.0.1:8000/api/polygons", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) throw new Error(await res.text());
+
+            const data = await res.json();
+            console.log("Išsaugota:", data);
+            fetchPolygons();
+        } 
+        
+        catch (err) 
+        {
+            console.error("Klaida:", err);
+            alert("Nepavyko išsaugoti: " + err.message);
+        }
+    };
+
+
+        /*const name = prompt("Iveskite poligono pavadinima: ");
         const color = prompt("Iveskite spalva (hex koda): ");
 
         const body = {
             name: name || "Be Pavadinimo",
             coordinates: [drawnCoords.value],
-            color: color || "#0000ff"
+            color: color || "#0000ff",
+            area: parseFloat(areaHectares)
         };
 
         try
@@ -207,7 +289,7 @@ import { method, values } from "lodash";
         {
             console.error("Nepavyko issaugoti: ", err);
         }
-    };
+    };*/
 
     // Saugo tekstu ivestus poligonus
     const sTypedPolygon = async () => {
@@ -400,6 +482,14 @@ import { method, values } from "lodash";
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         z-index: 10000;
         width: 300px;
+    }
+
+    .area-label
+    {
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-weight: bold;
     }
 
 </style>

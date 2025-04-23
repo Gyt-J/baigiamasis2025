@@ -12,19 +12,45 @@ class PolygonController extends Controller
 {
     public function store(Request $request)
     {
-        $polygon = Polygon::create([
-            'name' => $request->name,
-            'coordinates' => $request->coordinates, // Tikesis JSON formato
-            'color' => $request->color
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'coordinates' => 'required|array',
+            'color' => 'nullable|string',
+            'plotas' => 'nullable|numeric',
+            'statusas_id' => 'nullable|integer|exists:statusai,id'
+        ]);
+    
+        // Convert coordinates to consistent format
+        $validated['coordinates'] = array_values($validated['coordinates']);
+    
+        $polygon = Polygon::create($validated);
+        return response()->json($polygon->load('statusas'), 201);
+    }
+    
+    public function index()
+    {
+        return response() -> json(Polygon::with('statusas')->get());
+    }
+
+    /*public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'coordinates' => 'required|string',
+            'color' => 'required|string',
+            'plotas' => 'nullable|numeric',
+            'statusas_id' => 'nullable|integer|exists:statusai,id'
         ]);
 
-        return response() -> json($polygon, 201);
+        $polygon = Polygon::create($validated);
+        
+        return response()->json($polygon->load('statusas'), 201);
     }
 
     public function index()
     {
         return response() -> json(Polygon::with('statusas')->get());
-    }
+    }*/
 
     /*public function update(Request $request, $id)
     {
