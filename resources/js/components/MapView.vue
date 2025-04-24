@@ -62,9 +62,28 @@ import { method, values } from "lodash";
     const loadMap = () => {
         map.value = L.map("map").setView([55.93393, 23.31768], 13); // Default rodoma lokacija, Siauliai
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { // Keisti cia norint kitokio tile layer
-            attribution: "&copy; OpenStreetMap contributors",
-        }).addTo(map.value);
+        const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors"
+        });
+
+        const esri = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            attribution: "Tiles © Esri"
+        });
+
+        const cartoLight = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+            attribution: '&copy; <a href="https://carto.com/">Carto</a>',
+        });
+
+        osm.addTo(map.value);
+
+        const baseLayers = {
+            "OpenStreetMap": osm,
+            "ESRI Satellite": esri,
+            "Carto Light": cartoLight
+        };
+
+        L.control.layers(baseLayers).addTo(map.value);  
+
     };
 
     // Uzkrauna leaflet-draw 
@@ -102,11 +121,17 @@ import { method, values } from "lodash";
         map.value.on(L.Draw.Event.CREATED, (e) => {
             const layer = e.layer; // Paima sukurta figura
 
+            if(!layer.getLatLngs || typeof layer.getLatLngs !== 'function')
+            {
+                alert("Sukurtas objektas nėra poligonas");
+                return;
+            }
+
             const latLngs = layer.getLatLngs();
 
             if (!latLngs?.[0]?.length)
             {
-                alert("Invalid polygon coordinates");
+                alert("Netinkamos koordinatės");
                 return;
             }
 
@@ -150,6 +175,20 @@ import { method, values } from "lodash";
                 .catch(err => console.error("Atnaujinimo klaida: ", err));
             });
         });
+
+        map.value.on(L.Draw.Event.DRAWVERTEX, function (e) {
+            const latlngs = e.layers._layers;
+            const coordinates = Object.values(latlngs).map(l => [l._latlng.lng, l._latlng.lat]);
+
+            if(coordinates.length > 2)
+            {
+                const poly = turf.polygon([[...coordinates, coordinates[0]]]);
+                const area = turf.area(poly);
+
+                const hectares = area / 10000;
+                console.log('Plotas gyvai: ', hectares.toFixed(2) + ' ha');
+            }
+        })
     };
 
     // Poligonu vizualizacijai
@@ -209,37 +248,45 @@ import { method, values } from "lodash";
     // Saugo nupiestus poligonus i DB
     const saveDrawnPolygon = async () => {
 
-        if (!drawnCoords.value.length) return alert("Nėra poligono");
+        if(!drawnCoords.value.length) return alert("Nėra poligono.");
 
         const name = prompt("Įveskite poligono pavadinimą:");
-        const colorOrStatus = prompt("Įveskite spalvą (hex) arba statusą (Užimtas, Laisvas, Dirbamas, Rezervuotas):");
-
-        // Skaiciuojamas plotas
+        const input = prompt("Įveskite spalvą (hex kodą) arba statusą (Užimtas, Laisvas, Dirbamas, Rezervuotas):");
+    
+        const reversedCoords = drawnCoords.value.map(([lat, lng]) => [lng, lat]);
         const geojson = {
             type: "Polygon",
-            coordinates: [drawnCoords.value]
+            coordinates: [reversedCoords]
         };
 
-        const area = (turf.area(geojson) / 10000).toFixed(2); // Hektarai
+        const area = turf.area(geojson) / 10000; // Verčia į hektarus
         const roundedArea = Math.round(area * 100) / 100;
+        typedPolygon.value.area = roundedArea; // Tikslesnės kad įvestu teisingai į DB
 
         const body = {
-            name,
+            name: name || "Be pavadinimo",
             coordinates: [drawnCoords.value],
             plotas: roundedArea,
         };
 
-        if (statusMapping[input])
+        // Tikrins ar input spalva ar statusas
+        if(statusMapping[input])
         {
             body.statusas_id = statusMapping[input];
         }
 
-        else if (/^#([0-9A-F]{3}){1,2}$/i.test(input)) 
+        else if(/^#([0-9A-F]{3}){1,2}$/i.test(input))
         {
             body.color = input;
-        } 
+        }
 
-        try 
+        else
+        {
+            alert("Netinkama įvestis - turi būti statusas arba spalva HEX formato");
+            return;
+        }
+
+        try
         {
             const res = await fetch("http://127.0.0.1:8000/api/polygons", {
                 method: "POST",
@@ -247,16 +294,16 @@ import { method, values } from "lodash";
                 body: JSON.stringify(body)
             });
 
-            if (!res.ok) throw new Error(await res.text());
+            if(!res.ok) throw new Error(await res.text());
 
             const data = await res.json();
-            console.log("Išsaugota:", data);
-            fetchPolygons();
-        } 
-        
-        catch (err) 
+            console.log("Poligonas išsaugotas: ", data);
+            fetchPolygons(); // Perkrauna kad mestu poligona
+        }
+
+        catch(err)
         {
-            console.error("Klaida:", err);
+            console.error("Klaida saveDrawPolygon: ", err);
             alert("Nepavyko išsaugoti: " + err.message);
         }
     };
