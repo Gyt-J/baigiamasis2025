@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PolygonController; // Mano prideta
+use App\Http\Controllers\PaselioController;
 use App\Models\Polygon;
 
 /*
@@ -23,3 +24,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::put('/polygons/{id}', [PolygonController::class, 'update']);
 Route::post('/polygons', [PolygonController::class, 'store']);
 Route::get('/polygons', [PolygonController::class, 'index']); // Mano prideta, up2 irgi
+Route::post('/polygons/{polygon}/paseliai', [PaselioController::class, 'update']);

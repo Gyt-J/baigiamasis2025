@@ -9,12 +9,25 @@ class Polygon extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'coordinates', 'color', 'plotas', 'rc_kodas', 'statusas_id'];
+    protected $fillable = ['name', 'coordinates', 'color', 'plotas', 'rc_kodas', 'statusas_id', 'paselio_id', 'paseliu_istorija'];
 
-    protected $casts = ['coordinates' => 'array']; // Automatiskai decodina JSON
+    protected $casts = [
+        'coordinates' => 'array',
+        'paseliu_istorija' => 'array'
+    ]; // Automatiskai decodina JSON
 
     public function statusas()
     {
         return $this->belongsTo(Statusas::class, 'statusas_id');
     }
+
+    public function currentCrop()
+    {
+        return $this->belongsTo(Paseliai::class, 'paselio_id');
+    }
+
+    /*public function paseliu_istorija()
+    {
+        return $this->hasMany(PaselisIstorija::class);
+    }*/
 }

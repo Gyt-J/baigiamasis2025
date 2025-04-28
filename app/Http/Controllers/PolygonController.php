@@ -29,7 +29,8 @@ class PolygonController extends Controller
     
     public function index()
     {
-        return response() -> json(Polygon::with('statusas')->get());
+        //return response() -> json(Polygon::with('statusas', 'currentCrop', 'paseliu_istorija')->get());
+        return Polygon::with(['statusas', 'currentCrop'])->get();
     }
 
     /*public function store(Request $request)

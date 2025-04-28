@@ -7,7 +7,8 @@
     import 'leaflet-draw/dist/leaflet.draw.css';
     import * as turf from '@turf/turf';
     import 'leaflet-geometryutil';
-import { method, values } from "lodash";
+    import CropPlanner from './CropPlanner.vue';
+    import { method, values } from "lodash";
 
     // Ref zemelapiui ir poligonams
     const map = ref(null);
@@ -97,6 +98,7 @@ import { method, values } from "lodash";
 
         // 'Draw' kontrole
         const drawControl = new L.Control.Draw({
+
             edit:
             {
                 featureGroup: drawnArea.value,
@@ -106,7 +108,16 @@ import { method, values } from "lodash";
 
             draw:
             {
-                polygon: true,
+                polygon: {
+                    allowIntersection: false,
+                    drawError: {
+                        color: '#b00b00',
+                        message: 'Error: Netinkamas poligonas'
+                    },
+                    shapeOptions: {
+                        color: '#bada55'
+                    }
+                },
                 polyline: true,
                 rectangle: true,
                 marker: true,
@@ -114,7 +125,6 @@ import { method, values } from "lodash";
                 circlemarker: true
             }
         });
-
         map.value.addControl(drawControl);
 
         // Kai sukuriamas poligonas
@@ -176,6 +186,14 @@ import { method, values } from "lodash";
             });
         });
 
+        map.value.on(L.Draw.Event.EDITSTART, () => {
+            map.value.doubleClickZoom.disable();
+        });
+
+        map.value.on(L.Draw.Event.EDITSTOP, () => {
+            map.value.doubleClickZoom.enable();
+        });
+
         map.value.on(L.Draw.Event.DRAWVERTEX, function (e) {
             const latlngs = e.layers._layers;
             const coordinates = Object.values(latlngs).map(l => [l._latlng.lng, l._latlng.lat]);
@@ -228,9 +246,21 @@ import { method, values } from "lodash";
             poly.polygonId = polygon.id;
 
             //poly.on("Click", () => openEditPopup(polygon, poly));
-            poly.on("click", () => {
+            /*poly.on("click", () => {
                 console.log("poligonas paspaustas");
                 openEditPopup(polygon, poly);
+            });*/
+
+            poly.on("click", (e) => {
+                L.DomEvent.stopPropagation(e); // Saugo kad event neissiupustu
+                console.log("Poligonas paspaustas: ", polygon.id);
+                openEditPopup(polygon, poly);
+            });
+
+            poly.on("contextmenu", (e) => {
+                L.DomEvent.stopPropagation(e);
+                selectedPolygon.value = polygon;
+                console.log("Right-Click ant poligono: ", poly.polygonId);
             });
 
             drawnArea.value.addLayer(poly);
@@ -476,6 +506,8 @@ import { method, values } from "lodash";
 </script>
 
 <template>
+
+    <CropPlanner :selected-polygon="selectedPolygon" />
     
     <div id="map"></div>
 
@@ -527,7 +559,7 @@ import { method, values } from "lodash";
         padding: 15px;
         border: 2px solid #ccc;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-        z-index: 10000;
+        z-index: 10001;
         width: 300px;
     }
 
@@ -537,6 +569,11 @@ import { method, values } from "lodash";
         padding: 2px 4px;
         border-radius: 4px;
         font-weight: bold;
+    }
+
+    .crop-planner
+    {
+        z-index: 10002; /* Auksciau popup!!! */
     }
 
 </style>
