@@ -2,13 +2,13 @@
 
     import { ref, onMounted } from "vue";
     import L, { latLng, polyline, rectangle } from "leaflet";
-    import "leaflet/dist/leaflet.css";
     import 'leaflet-draw';
-    import 'leaflet-draw/dist/leaflet.draw.css';
     import * as turf from '@turf/turf';
     import 'leaflet-geometryutil';
     import CropPlanner from './CropPlanner.vue';
     import { method, values } from "lodash";
+    import 'leaflet/dist/leaflet.css';
+    import 'leaflet-draw/dist/leaflet.draw.css';
 
     // Ref zemelapiui ir poligonams
     const map = ref(null);
@@ -194,7 +194,7 @@
             map.value.doubleClickZoom.enable();
         });
 
-        map.value.on(L.Draw.Event.DRAWVERTEX, function (e) {
+        /*map.value.on(L.Draw.Event.DRAWVERTEX, function (e) {
             const latlngs = e.layers._layers;
             const coordinates = Object.values(latlngs).map(l => [l._latlng.lng, l._latlng.lat]);
 
@@ -206,7 +206,7 @@
                 const hectares = area / 10000;
                 console.log('Plotas gyvai: ', hectares.toFixed(2) + ' ha');
             }
-        })
+        })*/
     };
 
     // Poligonu vizualizacijai
@@ -574,6 +574,11 @@
     .crop-planner
     {
         z-index: 10002; /* Auksciau popup!!! */
+    }
+
+    .leaflet-draw-tooltip 
+    {
+        pointer-events: none;
     }
 
 </style>
