@@ -2,6 +2,7 @@
 
     import { ref, computed } from 'vue';
     import { watch } from 'vue';
+    import PlotWeather from './PlotWeather.vue';
 
     const props = defineProps({
         selectedPolygon: Object
@@ -132,6 +133,8 @@
         <div v-else>
             Pasirinkite lauka planavimui
         </div>
+
+        <PlotWeather v-if="selectedPolygon" :polygon="selectedPolygon" />
     </div>
 </template>
 
