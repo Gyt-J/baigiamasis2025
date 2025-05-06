@@ -96,7 +96,7 @@
         drawnArea.value = new L.FeatureGroup(); // Layer group poligonu laikimui
         map.value.addLayer(drawnArea.value);
 
-        // 'Draw' kontrole
+        // Leaflet piesimo irankiu kontrole
         const drawControl = new L.Control.Draw({
 
             edit:
@@ -145,7 +145,7 @@
                 return;
             }
 
-            drawnArea.value.addLayer(layer); // Ideda i 'feature group'
+            drawnArea.value.addLayer(layer);
             drawnCoords.value = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
 
             const geojson = layer.toGeoJSON();
@@ -499,7 +499,7 @@
 
         catch 
         {
-            return null; // safer than returning raw string
+            return null;
         }
     };
 

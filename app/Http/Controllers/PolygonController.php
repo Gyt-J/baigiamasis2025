@@ -20,7 +20,6 @@ class PolygonController extends Controller
             'statusas_id' => 'nullable|integer|exists:statusai,id'
         ]);
     
-        // Convert coordinates to consistent format
         $validated['coordinates'] = array_values($validated['coordinates']);
     
         $polygon = Polygon::create($validated);

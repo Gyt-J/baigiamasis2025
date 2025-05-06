@@ -23,7 +23,7 @@ class Polygon extends Model
 
     public function currentCrop()
     {
-        return $this->belongsTo(Paseliai::class, 'paselio_id');
+        return $this->belongsTo(Paselis::class, 'paselio_id');
     }
 
     /*public function paseliu_istorija()

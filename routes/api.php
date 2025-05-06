@@ -23,5 +23,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::put('/polygons/{id}', [PolygonController::class, 'update']);
 Route::post('/polygons', [PolygonController::class, 'store']);
-Route::get('/polygons', [PolygonController::class, 'index']); // Mano prideta, up2 irgi
+Route::get('/polygons', [PolygonController::class, 'index']);
 Route::post('/polygons/{polygon}/paseliai', [PaselioController::class, 'update']);
+
+Route::get('/paseliai', [PaselioController::class, 'index']);
+Route::post('/paseliai', [PaselioController::class, 'store']);

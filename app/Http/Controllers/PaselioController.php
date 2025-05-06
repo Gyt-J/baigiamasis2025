@@ -3,11 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Polygon;
-use App\Models\Paseliai;
+use App\Models\Paselis;
 use Illuminate\Http\Request;
 
 class PaselioController extends Controller
 {
+    public function index()
+    {
+        return Paselis::all();
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'pavadinimas' => 'required|string|unique:paseliai,pavadinimas',
+            'rotacijos_grupe' => 'required|integer|between:1,4'
+        ]);
+
+        $paselis = Paselis::create($validated);
+        return response()->json($paselis, 201);
+    }
+
     public function update(Polygon $polygon, Request $request)
     {
         $validated = $request->validate([
@@ -19,7 +35,7 @@ class PaselioController extends Controller
         {
             $istorija = $polygon->paseliu_istorija ?: [];
 
-            $crop = Paseliai::findOrFail($validated['paselio_id']);
+            $crop = Paselis::findOrFail($validated['paselio_id']);
 
             array_unshift($istorija, [
                 'metai' => $validated['metai'],
