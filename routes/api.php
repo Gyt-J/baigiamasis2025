@@ -17,14 +17,20 @@ use App\Models\Polygon;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('auth:sanctum')->get('/check-auth', function () {
+    return response()->json(['authenticated' => true]);
 });
 
-Route::put('/polygons/{id}', [PolygonController::class, 'update']);
-Route::post('/polygons', [PolygonController::class, 'store']);
-Route::get('/polygons', [PolygonController::class, 'index']);
-Route::post('/polygons/{polygon}/paseliai', [PaselioController::class, 'update']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::put('/polygons/{id}', [PolygonController::class, 'update']);
+    Route::post('/polygons', [PolygonController::class, 'store']);
+    Route::get('/polygons', [PolygonController::class, 'index']);
+    Route::post('/polygons/{polygon}/paseliai', [PaselioController::class, 'update']);
+    
+    Route::get('/paseliai', [PaselioController::class, 'index']);
+    Route::post('/paseliai', [PaselioController::class, 'store']);
+});
 
-Route::get('/paseliai', [PaselioController::class, 'index']);
-Route::post('/paseliai', [PaselioController::class, 'store']);
+Route::get('/check-auth', function () {
+    return response()->json(['authenticated' => auth()->check()]);
+})->middleware('auth:sanctum');

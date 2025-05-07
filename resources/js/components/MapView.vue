@@ -1,6 +1,7 @@
 <script setup>
 
-    import { ref, onMounted } from "vue";
+    import { ref, onMounted } from 'vue';
+    import { useRouter } from 'vue-router';
     import L, { latLng, polyline, rectangle } from "leaflet";
     import 'leaflet-draw';
     import * as turf from '@turf/turf';
@@ -9,6 +10,15 @@
     import { method, values } from "lodash";
     import 'leaflet/dist/leaflet.css';
     import 'leaflet-draw/dist/leaflet.draw.css';
+    import { uniq } from "lodash";
+    import { filter } from "lodash";
+
+
+    onMounted(() => {
+        checkAuth();
+    });
+
+    const router = useRouter();
 
     // Ref zemelapiui ir poligonams
     const map = ref(null);
@@ -45,7 +55,14 @@
     const fetchPolygons = async () => {
         try 
         {
-            const response = await fetch("http://127.0.0.1:8000/api/polygons");
+            const response = await fetch("http://127.0.0.1:8000/api/polygons", {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+
+                credentials: 'include'
+            });
 
             const data = await response.json();
             polygons.value = data;
@@ -74,7 +91,7 @@
         const cartoLight = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             attribution: '&copy; <a href="https://carto.com/">Carto</a>',
         });
-
+        
         osm.addTo(map.value);
 
         const baseLayers = {
@@ -83,7 +100,9 @@
             "Carto Light": cartoLight
         };
 
-        L.control.layers(baseLayers).addTo(map.value);  
+        L.control.layers(baseLayers, null, {
+            position: 'bottomright'
+        }).addTo(map.value);
 
     };
 
@@ -269,11 +288,38 @@
     };
 
     // Paleidžia kai viskas uzloadinta
-    onMounted(() => {
-        loadMap();
-        fetchPolygons();
-        loadDraw();
-    });
+    /*onMounted(() => {
+        if(window.location.pathname === '/')
+        {
+            loadMap();
+            fetchPolygons();
+            loadDraw();
+        }
+    });*/
+
+    const checkAuth = async () => {
+        try
+        {
+            const response = await fetch('/api/check-auth', {
+                credentials: 'include'
+            });
+
+            if(!response.ok)
+            {
+                window.location.href = '/login';
+                return;
+            }
+
+            loadMap();
+            fetchPolygons();
+            loadDraw();
+        }
+
+        catch(error)
+        {
+            window.location.href = '/login';
+        }
+    };
 
     // Saugo nupiestus poligonus i DB
     const saveDrawnPolygon = async () => {
@@ -573,8 +619,10 @@
 
     .crop-planner
     {
-        z-index: 10002; /* Auksciau popup!!! */
-    }
+        right: 20px;
+        top: 20px;
+        z-index: 10001; /* Auksciau popup!!! */
+    } 
 
     .leaflet-draw-tooltip 
     {

@@ -207,10 +207,10 @@
                 <h5> Prideti nauja paseli </h5>
                 <input v-model="newCropName" placeholder="Paselio pavadinimas" />
                 <select v-model.number="newCropGroup">
-                    <option value="1"> Grupe 1 </option>
-                    <option value="2"> Grupe 2 </option>
-                    <option value="3"> Grupe 3 </option>
-                    <option value="4"> Grupe 4 </option>
+                    <option value="1"> Žiemos </option>
+                    <option value="2"> Pavasario </option>
+                    <option value="3"> Vasaros </option>
+                    <option value="4"> Rudens </option>
                 </select>
 
                 <div class="form-actions">

@@ -97,11 +97,8 @@ class PolygonController extends Controller
         }
     
         // Tikrina kad butu teisingas koordinaciu formatas
-        if (
-            !is_array($coordinates) ||
-            !is_array($coordinates[0]) ||
-            !is_array($coordinates[0][0])
-        ) {
+        if (!is_array($coordinates) || !is_array($coordinates[0]) || !is_array($coordinates[0][0])) 
+        {
             return response()->json(['error' => 'Koordinates turi buti tinkamo formato'], 400);
         }
     
